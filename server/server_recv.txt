@@ -1,0 +1,17 @@
+GET / HTTP/1.1
+Host: localhost:5050
+Connection: keep-alive
+sec-ch-ua: " Not A;Brand";v="99", "Chromium";v="100", "Google Chrome";v="100"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "macOS"
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
+Sec-Fetch-Site: none
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Accept-Encoding: gzip, deflate, br
+Accept-Language: ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7
+Cookie: csrftoken=KCechtF7vBAiGsbSnjEkmnkSEodeLtKEeWBsMD5JuvOfJaXd88NhalqbP0ecNRQ1; JSESSIONID.e015d97f=node015u26eskmae0wj0l1zsxdgsp1.node0; JSESSIONID.090c973a=node01tfups9j6c9761b1lin0axftvh2.node0; screenResolution=1440x900; JSESSIONID.5311c2a2=node0wdqfkzmo46ic1qq3aa037fj1a42.node0; JSESSIONID.dbe609ad=node01tyeqjwjqy2kvnxaglbeb82n80.node0; JSESSIONID.57d7e30c=node0z45g3mzahyzq2ek8u410r3ye0.node0; JSESSIONID.388a1337=node0qzy9li1gedhy1uc4crrbmeyzf0.node0; JSESSIONID.5a867c13=node093sw6ylrj5741k1xlz2e7xiqz2.node0; jenkins-timestamper-offset=-32400000; _xsrf=2|72c4dc28|3f19bfa9ef0f48068ee4d6a838048c45|1647306790
+
