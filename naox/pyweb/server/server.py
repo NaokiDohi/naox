@@ -1,8 +1,8 @@
 import socket
 
-from workerthread import WorkerThread
+from pyweb.server.worker import Worker
 
-class WebServer:
+class Server:
     """
     TCP通信を行うサーバーを表すクラス
     """
@@ -30,7 +30,7 @@ class WebServer:
                 print(f"=== Server: クライアントとの接続が完了しました(コネクションが確立する) remote_address: {address} ===")
 
                 # クライアントを処理するスレッドを作成
-                thread = WorkerThread(client_socket, address)
+                thread = Worker(client_socket, address)
                 # 新規スレッドを作成 start()でスレッドが作成されると同時にrun()が実行される
                 thread.start()
 

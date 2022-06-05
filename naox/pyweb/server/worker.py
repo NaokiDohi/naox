@@ -10,7 +10,7 @@ from pyweb.http.request import HTTPRequest
 from pyweb.http.response import HTTPResponse
 from routers.urls import URL_VIEW
 
-class WorkerThread(Thread):
+class Worker(Thread):
     """
     TCP通信を行うサーバーを表すクラス
     """
