@@ -56,9 +56,3 @@ class WebServer:
         # 引数は同時に受け付けるクライアントの数
         server_socket.listen(10)
         return server_socket
-
-
-if __name__ == '__main__':
-    server = WebServer()
-    # サーバーを起動させるメソッド
-    server.serve()
