@@ -7,8 +7,8 @@ class HTTPRequest:
     path: str
     method: str
     http_version: str
-    headers: dict = field(default_factory=dict)
     body: bytes
+    headers: dict = field(default_factory=dict)
 
 # class HTTPRequest:
 #     path: str

@@ -71,27 +71,25 @@ class WorkerThread(Thread):
             # pathがそれ以外のときは、静的ファイルからレスポンスを生成する
             else:
                 try:
-                    # レスポンスラインを生成
-                    response_line = "HTTP/1.1 200 OK\r\n"
                     # レスポンスボディを生成
-                    response_body = self.get_static_file_content(path)
+                    response_body = self.get_static_file_content(request.path)
                     # Content-Typeを指定
                     content_type = None
-
+                    response = HTTPResponse(status_code=200, body=response_body, content_type=content_type)
 
                 except OSError:
                     # レスポンスを取得できなかった場合は、ログを出力して404を返す
                     traceback.print_exc()
-                    response_line = "HTTP/1.1 404 Not Found\r\n"
                     response_body = b"<html><body><h1>404 Not Found</h1></body></html>"
                     content_type = "text/html; charset=UTF-8"
+                    response = HTTPResponse(status_code=404, body=response_body, content_type=content_type)
             
             # レスポンスラインを生成
             response_line = self.build_response_line(response)
             # レスポンスヘッダーを生成
             response_header = self.build_response_header(request, response)
             # ヘッダーとボディを空行で結合した後bytesに変換し、レスポンス全体を生成
-            response = (response_line + response_header + "\r\n").encode() + response_body
+            response = (response_line + response_header + "\r\n").encode() + response.body
 
             # クライアントへレスポンスを送信する
             self.client_socket.send(response)
@@ -138,7 +136,7 @@ class WorkerThread(Thread):
             key, value = re.split(r": *", header_row, maxsplit=1)
             headers[key] = value
 
-        return HTTPRequest(method=method, path=path, http_version=http_version, headers=headers, body=request_body)
+        return HTTPRequest(method=method, path=path, http_version=http_version, body=request_body, headers=headers)
 
     def get_static_file_content(self, path: str) -> bytes:
         """

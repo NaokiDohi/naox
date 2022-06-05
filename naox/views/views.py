@@ -64,12 +64,12 @@ def parameters(request: HTTPRequest) -> HTTPResponse:
     POSTパラメータを表示するHTMLを表示する
     """
     # GETリクエストの場合は、405を返す
-    if method == "GET":
+    if request.method == "GET":
         status_code = 405
         body = b"<html><body><h1>405 Method Not Allowed</h1></body></html>"
         content_type = "text/html; charset=UTF-8"
 
-    elif method == "POST":
+    elif request.method == "POST":
         # urllib.parse.parse_qs()は、URLエンコードされた文字列を辞書へパースする関数
         # {str:list}の辞書を返す
         post_params = urllib.parse.parse_qs(request.body.decode())
@@ -84,7 +84,7 @@ def parameters(request: HTTPRequest) -> HTTPResponse:
 
         status_code = 200
         # レスポンスボディを生成
-        response_body = textwrap.dedent(html).encode()
+        body = textwrap.dedent(html).encode()
         # Content-Typeを指定
         content_type = "text/html; charset=UTF-8"
     
