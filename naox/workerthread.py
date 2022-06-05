@@ -33,6 +33,13 @@ class WorkerThread(Thread):
         "csv": "text/csv",
     }
 
+    # pathとview関数の対応
+    URL_VIEW = {
+        "/now": views.now,
+        "/show_request": views.show_request,
+        "/parameters": views.parameters,
+    }
+
     def __init__(self, client_socket: socket, address: Tuple[str, int]):
         super().__init__()
 
@@ -61,18 +68,12 @@ class WorkerThread(Thread):
             content_type: Optional[str] # str型またはNoneを表す型 Nullable型
             response_line: str
 
-            # pathが/nowのときは、現在時刻を表示するHTMLを生成する
-            if path == "/now":
-                response_line, response_body, content_type  = views.now()
-
-            # pathが/show_requestのときは、HTTPリクエストの内容を表示するHTMLを生成する
-            elif path == "/show_request":
-                response_line, response_body, content_type  = views.show_request(
+            # pathに対応するview関数があれば、関数を取得して呼び出し、レスポンスを生成する
+            if path in self.URL_VIEW:
+                view = self.URL_VIEW[path]
+                response_line, response_body, content_type = view(
                     method, path, http_version, request_header, request_body
                 )
-
-            elif path == "/parameters":
-                response_line, response_body, content_type  = views.parameters(method, request_body)
 
             # pathがそれ以外のときは、静的ファイルからレスポンスを生成する
             else:

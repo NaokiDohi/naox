@@ -4,7 +4,15 @@ from datetime import datetime
 from pprint import pformat
 from typing import Tuple, Optional
 
-def now() -> Tuple[str, bytes, Optional[str]]:
+# Viewの関数引数のインターフェースを統一し、
+# 呼び出しの際に必要な引数が何かを考える必要がないようにする
+def now(
+        method: str,
+        path: str,
+        http_version: str,
+        request_header: dict,
+        request_body: bytes,
+    ) -> Tuple[str, bytes, Optional[str]]:
     """
     現在時刻を表示するHTMLを生成する
     """
@@ -66,6 +74,9 @@ def show_request(
 
 def parameters(
         method: str,
+        path: str,
+        http_version: str,
+        request_header: dict,
         request_body: bytes,
     ) -> Tuple[str, bytes, Optional[str]]:
     """
