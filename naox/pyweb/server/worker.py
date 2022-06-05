@@ -6,6 +6,7 @@ from socket import socket
 from threading import Thread
 from typing import Tuple
 
+import settings
 from pyweb.http.request import HTTPRequest
 from pyweb.http.response import HTTPResponse
 from routers.urls import URL_VIEW
@@ -14,12 +15,8 @@ class Worker(Thread):
     """
     TCP通信を行うサーバーを表すクラス
     """
-    # 実行ファイルのあるディレクトリ
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    # 静的配信するファイルを置くディレクトリ
-    STATIC_ROOT = os.path.join(BASE_DIR, "static")
-    print(f'BASE_DIR: {BASE_DIR}')
-    print(f'STATIC_ROOT: {STATIC_ROOT}')
+    print(f'BASE_DIR: {settings.BASE_DIR}')
+    print(f'STATIC_ROOT: {settings.STATIC_ROOT}')
 
     # 拡張子とMIME Typeの対応
     # ブラウザで日本語を表示させる為、日本語に対応したエンコーディングを指定
@@ -142,12 +139,17 @@ class Worker(Thread):
         """
         リクエストpathから、staticファイルの内容を取得する
         """
+        # settingsモジュールにSTATIC_ROOTが存在すればそれを取得し、
+        # なければデフォルトの値を使用する。
+        default_static_root = os.path.join(os.path.dirname(__file__), "../../static")
+        static_root = getattr(settings, "STATIC_ROOT", default_static_root)
+
         # pathの先頭の/を削除し、相対パスにする
         # 消去するのはos.path.join(base, path)の仕様上　
         # 第2引数pathに/で始まる絶対パスを与えると第一引数baseが無視される
         relative_path = path.lstrip("/")
         # ファイルのpathを取得
-        static_file_path = os.path.join(self.STATIC_ROOT, relative_path)
+        static_file_path = os.path.join(static_root, relative_path)
 
         # ファイルからレスポンスボディを生成
         with open(static_file_path, "rb") as f:
