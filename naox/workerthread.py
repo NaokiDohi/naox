@@ -1,17 +1,14 @@
 import os
 import re
-import textwrap
 import traceback
-import urllib.parse
 from datetime import datetime
-from pprint import pformat
 from socket import socket
 from threading import Thread
-from typing import Tuple, Optional
+from typing import Tuple
 
-from views import views
 from pyweb.http.request import HTTPRequest
 from pyweb.http.response import HTTPResponse
+from routers.urls import URL_VIEW
 
 class WorkerThread(Thread):
     """
@@ -33,13 +30,6 @@ class WorkerThread(Thread):
         "jpg": "image/jpg",
         "gif": "image/gif",
         "csv": "text/csv",
-    }
-
-    # pathとview関数の対応
-    URL_VIEW = {
-        "/now": views.now,
-        "/show_request": views.show_request,
-        "/parameters": views.parameters,
     }
 
     # ステータスコードとステータスラインの対応
@@ -74,8 +64,8 @@ class WorkerThread(Thread):
             request = self.parse_http_request(request_bytes)
 
             # pathに対応するview関数があれば、関数を取得して呼び出し、レスポンスを生成する
-            if request.path in self.URL_VIEW:
-                view = self.URL_VIEW[request.path]
+            if request.path in URL_VIEW:
+                view = URL_VIEW[request.path]
                 response = view(request)
 
             # pathがそれ以外のときは、静的ファイルからレスポンスを生成する
