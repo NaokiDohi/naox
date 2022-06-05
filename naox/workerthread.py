@@ -10,6 +10,8 @@ from threading import Thread
 from typing import Tuple, Optional
 
 from views import views
+from pyweb.http.request import HTTPRequest
+from pyweb.http.response import HTTPResponse
 
 class WorkerThread(Thread):
     """
@@ -40,6 +42,13 @@ class WorkerThread(Thread):
         "/parameters": views.parameters,
     }
 
+    # ステータスコードとステータスラインの対応
+    STATUS_LINES = {
+        200: "200 OK",
+        404: "404 Not Found",
+        405: "405 Method Not Allowed",
+    }
+
     def __init__(self, client_socket: socket, address: Tuple[str, int]):
         super().__init__()
 
@@ -55,25 +64,19 @@ class WorkerThread(Thread):
             # クライアントから送られてきたデータをbytes型で取得する
             # 引数はネットワークバッファ(到着したデータをためておく所)から一回で取得するバイト数。
             # recv()は呼び出した時点で溜まっているデータを、4096バイトずつ繰り返し取得し、全て取得する。
-            request = self.client_socket.recv(4096)
+            request_bytes = self.client_socket.recv(4096)
 
             # クライアントから送られてきたデータをファイルに書き出す
             with open("server_recv.txt", "wb") as f:
-                f.write(request)
+                f.write(request_bytes)
 
             # HTTPリクエストをパースする
-            method, path, http_version, request_header, request_body = self.parse_http_request(request)
-
-            response_body: bytes
-            content_type: Optional[str] # str型またはNoneを表す型 Nullable型
-            response_line: str
+            request = self.parse_http_request(request_bytes)
 
             # pathに対応するview関数があれば、関数を取得して呼び出し、レスポンスを生成する
-            if path in self.URL_VIEW:
-                view = self.URL_VIEW[path]
-                response_line, response_body, content_type = view(
-                    method, path, http_version, request_header, request_body
-                )
+            if request.path in self.URL_VIEW:
+                view = self.URL_VIEW[request.path]
+                response = view(request)
 
             # pathがそれ以外のときは、静的ファイルからレスポンスを生成する
             else:
@@ -92,9 +95,11 @@ class WorkerThread(Thread):
                     response_line = "HTTP/1.1 404 Not Found\r\n"
                     response_body = b"<html><body><h1>404 Not Found</h1></body></html>"
                     content_type = "text/html; charset=UTF-8"
-
+            
+            # レスポンスラインを生成
+            response_line = self.build_response_line(response)
             # レスポンスヘッダーを生成
-            response_header = self.build_response_header(path, response_body, content_type)
+            response_header = self.build_response_header(request, response)
             # ヘッダーとボディを空行で結合した後bytesに変換し、レスポンス全体を生成
             response = (response_line + response_header + "\r\n").encode() + response_body
 
@@ -112,7 +117,7 @@ class WorkerThread(Thread):
             print(f"=== Worker: クライアントとの通信を終了します remote_address: {self.client_address} ===")
             self.client_socket.close()
 
-    def parse_http_request(self, request: bytes) -> Tuple[str, str, str, dict, bytes]:
+    def parse_http_request(self, request: bytes) -> HTTPRequest:
         """
         HTTPリクエストを
         1. method: str
@@ -143,7 +148,7 @@ class WorkerThread(Thread):
             key, value = re.split(r": *", header_row, maxsplit=1)
             headers[key] = value
 
-        return method, path, http_version, headers, request_body
+        return HTTPRequest(method=method, path=path, http_version=http_version, headers=headers, body=request_body)
 
     def get_static_file_content(self, path: str) -> bytes:
         """
@@ -160,29 +165,36 @@ class WorkerThread(Thread):
         with open(static_file_path, "rb") as f:
             return f.read()
 
-    def build_response_header(self, path: str, response_body: bytes, content_type: Optional[str]) -> str:
+    def build_response_line(self, response: HTTPResponse) -> str:
+        """
+        レスポンスラインを構築する
+        """
+        status_line = self.STATUS_LINES[response.status_code]
+        return f"HTTP/1.1 {status_line}"
+
+    def build_response_header(self, request: HTTPRequest, response: HTTPResponse) -> str:
         """
         レスポンスヘッダーを構築する
         """
 
         # ヘッダー生成の為、Content-Typeを取得
         # Content-Typeが指定されていない場合はpathから特定する
-        if content_type is None:
+        if response.content_type is None:
             # pathから拡張子を取得
-            if "." in path:
-                ext = path.rsplit(".", maxsplit=1)[-1]
+            if "." in request.path:
+                ext = request.path.rsplit(".", maxsplit=1)[-1]
             else:
                 ext = ""
             # 拡張子からMIME Typeを取得
             # 対応していない拡張子の場合、octet-streamとする
-            content_type = self.MIME_TYPES.get(ext, "application/octet-stream")
+            response.content_type = self.MIME_TYPES.get(ext, "application/octet-stream")
 
         # レスポンスヘッダーを生成
         response_header = ""
         response_header += f"Date: {datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')}\r\n"
         response_header += "Host: Naox/0.6\r\n"
-        response_header += f"Content-Length: {len(response_body)}\r\n"
+        response_header += f"Content-Length: {len(response.body)}\r\n"
         response_header += "Connection: Close\r\n"
-        response_header += f"Content-Type: {content_type}\r\n"
+        response_header += f"Content-Type: {response.content_type}\r\n"
 
         return response_header
