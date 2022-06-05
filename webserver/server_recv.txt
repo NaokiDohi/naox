@@ -1,5 +1,5 @@
 GET /logo.png HTTP/1.1
-Host: localhost:5050
+Host: localhost:8080
 Connection: keep-alive
 sec-ch-ua: " Not A;Brand";v="99", "Chromium";v="101", "Google Chrome";v="101"
 sec-ch-ua-mobile: ?0
@@ -9,7 +9,7 @@ Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
 Sec-Fetch-Site: same-origin
 Sec-Fetch-Mode: no-cors
 Sec-Fetch-Dest: image
-Referer: http://localhost:5050/index.html
+Referer: http://localhost:8080/index.html
 Accept-Encoding: gzip, deflate, br
 Accept-Language: ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7
 
