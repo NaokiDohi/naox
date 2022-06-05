@@ -2,6 +2,7 @@ import os
 import re
 import textwrap
 import traceback
+import urllib.parse
 from datetime import datetime
 from pprint import pformat
 from socket import socket
@@ -20,8 +21,9 @@ class WorkerThread(Thread):
     print(f'STATIC_ROOT: {STATIC_ROOT}')
 
     # 拡張子とMIME Typeの対応
+    # ブラウザで日本語を表示させる為、日本語に対応したエンコーディングを指定
     MIME_TYPES = {
-        "html": "text/html",
+        "html": "text/html; charset=UTF-8",
         "css": "text/css",
         "png": "image/png",
         "jpg": "image/jpg",
@@ -74,7 +76,7 @@ class WorkerThread(Thread):
                 # Content-Typeを指定
                 # これは、動的コンテンツを利用する場合
                 # pathからはレスポンスボディのフォーマットを特定することができないから
-                content_type = "text/html"
+                content_type = "text/html; charset=UTF-8"
 
             # pathが/show_requestのときは、HTTPリクエストの内容を表示するHTMLを生成する
             elif path == "/show_request":
@@ -101,8 +103,33 @@ class WorkerThread(Thread):
                 # レスポンスボディを生成
                 response_body = textwrap.dedent(html).encode()
                 # Content-Typeを指定
-                content_type = "text/html"
+                content_type = "text/html; charset=UTF-8"
 
+            elif path == "/parameters":
+                if method == "GET":
+                    response_line = "HTTP/1.1 405 Method Not Allowed\r\n"
+                    response_body = b"<html><body><h1>405 Method Not Allowed</h1></body></html>"
+                    content_type = "text/html; charset=UTF-8"
+
+                elif method == "POST":
+                    # urllib.parse.parse_qs()は、URLエンコードされた文字列を辞書へパースする関数
+                    # {str:list}の辞書を返す
+                    post_params = urllib.parse.parse_qs(request_body.decode())
+                    html = f"""\
+                        <html>
+                        <body>
+                            <h1>Parameters:</h1>
+                            <pre>{pformat(post_params)}</pre>                        
+                        </body>
+                        </html>
+                    """
+
+                    # レスポンスラインを生成
+                    response_line = "HTTP/1.1 200 OK\r\n"
+                    # レスポンスボディを生成
+                    response_body = textwrap.dedent(html).encode()
+                    # Content-Typeを指定
+                    content_type = "text/html; charset=UTF-8"
 
             # pathがそれ以外のときは、静的ファイルからレスポンスを生成する
             else:
@@ -120,7 +147,7 @@ class WorkerThread(Thread):
                     traceback.print_exc()
                     response_line = "HTTP/1.1 404 Not Found\r\n"
                     response_body = b"<html><body><h1>404 Not Found</h1></body></html>"
-                    content_type = "text/html"
+                    content_type = "text/html; charset=UTF-8"
 
             # レスポンスヘッダーを生成
             response_header = self.build_response_header(path, response_body, content_type)
@@ -209,7 +236,7 @@ class WorkerThread(Thread):
         # レスポンスヘッダーを生成
         response_header = ""
         response_header += f"Date: {datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')}\r\n"
-        response_header += "Host: Naox/0.5\r\n"
+        response_header += "Host: Naox/0.6\r\n"
         response_header += f"Content-Length: {len(response_body)}\r\n"
         response_header += "Connection: Close\r\n"
         response_header += f"Content-Type: {content_type}\r\n"
