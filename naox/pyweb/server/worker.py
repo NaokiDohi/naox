@@ -2,15 +2,14 @@ import os
 import re
 import traceback
 from datetime import datetime
-from re import Match
 from socket import socket
 from threading import Thread
-from typing import Tuple, Optional
+from typing import Tuple
 
 import settings
 from pyweb.http.request import HTTPRequest
 from pyweb.http.response import HTTPResponse
-from routers.urls import URL_VIEW
+from routers.urls import url_patterns
 
 class Worker(Thread):
     """
@@ -64,14 +63,14 @@ class Worker(Thread):
             # pathに対応するview関数があれば、関数を取得して呼び出し、レスポンスを生成する
             # for-else文はforが最後まで実行された時にelseが実行される。
             # breakが呼ばれた場合実行されない。
-            # itemsを用いてpath, viewがkey, valueの組み合わせとして存在するか確認する。
-            for url_pattern, view in URL_VIEW.items():
-                match = self.url_match(url_pattern, request.path)
+            for url_pattern in url_patterns:
+                match = url_pattern.match(request.path)
                 if match:
                     # URLパラメータが含まれている場合は.groupdict()メソッド
                     # でパラメータが辞書{"user_id":""}で取得できる。
-                    # print(f'match.groupdict(): {match.groupdict()}')
+                    print(f'match.groupdict(): {match.groupdict()}')
                     request.params.update(match.groupdict())
+                    view = url_pattern.view
                     response = view(request)
                     break
 
@@ -198,12 +197,3 @@ class Worker(Thread):
         response_header += f"Content-Type: {response.content_type}\r\n"
 
         return response_header
-
-    def url_match(self, url_pattern: str, path: str) -> Optional[Match]:
-        # URLパターンを正規表現パターンに変換する
-        # ex) '/user/<user_id>/profile' => '/user/(?P<user_id>[^/]+)/profile'
-        # url_patternの中の
-        # <(.+?)>任意の1文字の1回以上の繰り返しを
-        # (?P<user_id>[^/]+?) 直前の文字０個か1個マッチし、/以外の繰り返しを表す正規表現に置換
-        re_pattern = re.sub(r"<(.+?)>", r"(?P<\1>[^/]+)", url_pattern)
-        return re.match(re_pattern, path)
