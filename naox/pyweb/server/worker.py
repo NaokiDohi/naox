@@ -1,5 +1,6 @@
 import re
 import traceback
+import textwrap
 from datetime import datetime
 from socket import socket
 from threading import Thread
@@ -61,6 +62,11 @@ class Worker(Thread):
 
             # レスポンスを生成する
             response = view(request)
+
+            # レスポンスボディを変換
+            # bodyがstr型の場合、bytes型へ変換
+            if isinstance(response.body, str):
+                response.body = textwrap.dedent(response.body).encode()
 
             # レスポンスラインを生成
             response_line = self.build_response_line(response)
@@ -136,11 +142,12 @@ class Worker(Thread):
             # pathから拡張子を取得
             if "." in request.path:
                 ext = request.path.rsplit(".", maxsplit=1)[-1]
+                # 拡張子からMIME Typeを取得
+                # 対応していない拡張子の場合、octet-streamとする
+                response.content_type = self.MIME_TYPES.get(ext, "application/octet-stream")
             else:
-                ext = ""
-            # 拡張子からMIME Typeを取得
-            # 対応していない拡張子の場合、octet-streamとする
-            response.content_type = self.MIME_TYPES.get(ext, "application/octet-stream")
+                # pathに拡張子がない場合はhtml扱いとする
+                response.content_type = "text/html; charset=UTF-8"
 
         # レスポンスヘッダーを生成
         response_header = ""
