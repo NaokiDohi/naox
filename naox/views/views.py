@@ -5,6 +5,7 @@ from pprint import pformat
 
 from pyweb.http.request import HTTPRequest
 from pyweb.http.response import HTTPResponse
+from pyweb.templates.renderer import render
 
 # Viewの関数引数のインターフェースを統一し、
 # 呼び出しの際に必要な引数が何かを考える必要がないようにする
@@ -12,13 +13,8 @@ def now(request: HTTPRequest) -> HTTPResponse:
     """
     現在時刻を表示するHTMLを生成する
     """
-    html = f"""\
-        <html>
-        <body>
-            <h1>Now: {datetime.now()}</h1>
-        </body>
-        </html>
-    """
+    context = {"now": datetime.now()}
+    html = render("./templates/now.html", context)
     
     # レスポンスボディを生成
     body = textwrap.dedent(html).encode()
