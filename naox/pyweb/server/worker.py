@@ -1,4 +1,3 @@
-import os
 import re
 import traceback
 from datetime import datetime
@@ -6,7 +5,6 @@ from socket import socket
 from threading import Thread
 from typing import Tuple
 
-import settings
 from pyweb.http.request import HTTPRequest
 from pyweb.http.response import HTTPResponse
 from pyweb.urls.resolver import URLResolver
@@ -15,8 +13,6 @@ class Worker(Thread):
     """
     TCP通信を行うサーバーを表すクラス
     """
-    print(f'BASE_DIR: {settings.BASE_DIR}')
-    print(f'STATIC_ROOT: {settings.STATIC_ROOT}')
 
     # 拡張子とMIME Typeの対応
     # ブラウザで日本語を表示させる為、日本語に対応したエンコーディングを指定
@@ -60,41 +56,23 @@ class Worker(Thread):
             # HTTPリクエストをパースする
             request = self.parse_http_request(request_bytes)
 
-            # URL解決を試みる
-            # for-else文はforが最後まで実行された時にelseが実行される。
-            # breakが呼ばれた場合実行されない。
-            # (メソッド内にfor文がある)
+            # URL解決を行う
             view = URLResolver().resolve(request)
 
-            if view:
-                # URL解決できた場合は、viewからレスポンスを取得する
-                response = view(request)
+            # レスポンスを生成する
+            response = view(request)
 
-            # pathがそれ以外のときは、静的ファイルからレスポンスを生成する
-            else:
-                try:
-                    # レスポンスボディを生成
-                    response_body = self.get_static_file_content(request.path)
-                    # Content-Typeを指定
-                    content_type = None
-                    response = HTTPResponse(status_code=200, body=response_body, content_type=content_type)
-
-                except OSError:
-                    # レスポンスを取得できなかった場合は、ログを出力して404を返す
-                    traceback.print_exc()
-                    response_body = b"<html><body><h1>404 Not Found</h1></body></html>"
-                    content_type = "text/html; charset=UTF-8"
-                    response = HTTPResponse(status_code=404, body=response_body, content_type=content_type)
-            
             # レスポンスラインを生成
             response_line = self.build_response_line(response)
+
             # レスポンスヘッダーを生成
             response_header = self.build_response_header(request, response)
+
             # ヘッダーとボディを空行で結合した後bytesに変換し、レスポンス全体を生成
-            response = (response_line + response_header + "\r\n").encode() + response.body
+            response_bytes = (response_line + response_header + "\r\n").encode() + response.body
 
             # クライアントへレスポンスを送信する
-            self.client_socket.send(response)
+            self.client_socket.send(response_bytes)
         
         except Exception:
             # リクエストの処理中に例外が発生した場合は、
@@ -139,26 +117,6 @@ class Worker(Thread):
             headers[key] = value
 
         return HTTPRequest(method=method, path=path, http_version=http_version, body=request_body, headers=headers)
-
-    def get_static_file_content(self, path: str) -> bytes:
-        """
-        リクエストpathから、staticファイルの内容を取得する
-        """
-        # settingsモジュールにSTATIC_ROOTが存在すればそれを取得し、
-        # なければデフォルトの値を使用する。
-        default_static_root = os.path.join(os.path.dirname(__file__), "../../static")
-        static_root = getattr(settings, "STATIC_ROOT", default_static_root)
-
-        # pathの先頭の/を削除し、相対パスにする
-        # 消去するのはos.path.join(base, path)の仕様上　
-        # 第2引数pathに/で始まる絶対パスを与えると第一引数baseが無視される
-        relative_path = path.lstrip("/")
-        # ファイルのpathを取得
-        static_file_path = os.path.join(static_root, relative_path)
-
-        # ファイルからレスポンスボディを生成
-        with open(static_file_path, "rb") as f:
-            return f.read()
 
     def build_response_line(self, response: HTTPResponse) -> str:
         """
