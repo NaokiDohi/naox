@@ -14,7 +14,7 @@ def now(request: HTTPRequest) -> HTTPResponse:
     現在時刻を表示するHTMLを生成する
     """
     context = {"now": datetime.now()}
-    html = render("./templates/now.html", context)
+    html = render("now.html", context)
     
     # レスポンスボディを生成
     body = textwrap.dedent(html).encode()
