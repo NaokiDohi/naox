@@ -17,13 +17,8 @@ def now(request: HTTPRequest) -> HTTPResponse:
 
     # レスポンスボディを生成
     body = render("now.html", context)
-    
-    # Content-Typeを指定
-    # これは、動的コンテンツを利用する場合
-    # pathからはレスポンスボディのフォーマットを特定することができないから
-    content_type = "text/html; charset=UTF-8"
 
-    return HTTPResponse(status_code=200, body=body, content_type=content_type)
+    return HTTPResponse(body=body)
 
 def show_request(request: HTTPRequest) -> HTTPResponse:
     """
