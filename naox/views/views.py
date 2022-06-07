@@ -14,10 +14,10 @@ def now(request: HTTPRequest) -> HTTPResponse:
     現在時刻を表示するHTMLを生成する
     """
     context = {"now": datetime.now()}
-    html = render("now.html", context)
-    
+
     # レスポンスボディを生成
-    body = textwrap.dedent(html).encode()
+    body = render("now.html", context)
+    
     # Content-Typeを指定
     # これは、動的コンテンツを利用する場合
     # pathからはレスポンスボディのフォーマットを特定することができないから
