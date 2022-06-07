@@ -1,4 +1,3 @@
-import textwrap
 import urllib.parse
 from datetime import datetime
 from pprint import pformat
@@ -45,7 +44,7 @@ def parameters(request: HTTPRequest) -> HTTPResponse:
     elif request.method == "POST":
         # urllib.parse.parse_qs()は、URLエンコードされた文字列を辞書へパースする関数
         # {str:list}の辞書を返す
-        context = {"params": urllib.parse.parse_qs(request.body.decode())}
+        context = {"params": pformat(urllib.parse.parse_qs(request.body.decode()))}
         body = render("parameters.html", context)
         
         return HTTPResponse(body=body)

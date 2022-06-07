@@ -1,5 +1,6 @@
 import re
 import traceback
+import textwrap
 from datetime import datetime
 from socket import socket
 from threading import Thread
@@ -65,7 +66,7 @@ class Worker(Thread):
             # レスポンスボディを変換
             # bodyがstr型の場合、bytes型へ変換
             if isinstance(response.body, str):
-                response.body = response.body.encode()
+                response.body = textwrap.dedent(response.body).encode()
 
             # レスポンスラインを生成
             response_line = self.build_response_line(response)
