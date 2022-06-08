@@ -2,6 +2,7 @@ import urllib.parse
 from datetime import datetime
 from pprint import pformat
 
+from pyweb.http.cookie import Cookie
 from pyweb.http.request import HTTPRequest
 from pyweb.http.response import HTTPResponse
 from pyweb.templates.renderer import render
@@ -70,7 +71,10 @@ def login(request: HTTPRequest) -> HTTPResponse:
         email = post_params["email"][0]
 
         headers={"Location": "/welcome"}
-        cookies={"username": username, "email": email}
+        cookies = [
+            Cookie(name="username", value=username, max_age=30),
+            Cookie(name="email", value=email, max_age=30),
+        ]
 
         return HTTPResponse(status_code=302, headers=headers, cookies=cookies)
 
