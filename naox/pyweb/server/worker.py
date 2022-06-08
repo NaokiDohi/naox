@@ -123,7 +123,19 @@ class Worker(Thread):
             key, value = re.split(r": *", header_row, maxsplit=1)
             headers[key] = value
 
-        return HTTPRequest(method=method, path=path, http_version=http_version, body=request_body, headers=headers)
+        cookies = {}
+        if "Cookie" in headers:
+            # str から list へ変換 
+            # "name1=value1; name2=value2" => ["name1=value1", "name2=value2"]
+            # Cookieは1つと限らない。複数の場合は;区切りで渡される。
+            cookie_strings = headers["Cookie"].split("; ")
+            # list から dict へ変換
+            # ["name1=value1", "name2=value2"] => {"name1": "value1", "name2": "value2"}
+            for cookie_string in cookie_strings:
+                name, value = cookie_string.split("=", maxsplit=1)
+                cookies[name] = value
+
+        return HTTPRequest(method=method, path=path, http_version=http_version, headers=headers, cookies=cookies, body=request_body)
 
     def build_response_line(self, response: HTTPResponse) -> str:
         """
@@ -157,6 +169,9 @@ class Worker(Thread):
         response_header += f"Content-Length: {len(response.body)}\r\n"
         response_header += "Connection: Close\r\n"
         response_header += f"Content-Type: {response.content_type}\r\n"
+
+        for cookie_name, cookie_value in response.cookies.items():
+            response_header += f"Set-Cookie: {cookie_name}={cookie_value}\r\n"
 
         for header_name, header_value in response.headers.items():
             response_header += f"{header_name}: {header_value}\r\n"

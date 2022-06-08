@@ -67,35 +67,22 @@ def login(request: HTTPRequest) -> HTTPResponse:
     elif request.method == "POST":
         post_params = urllib.parse.parse_qs(request.body.decode())
         username = post_params["username"][0]
+        email = post_params["email"][0]
 
-        headers = {"Location": "/welcome", "Set-Cookie": f"username={username}"}
-        return HTTPResponse(status_code=302, headers=headers)
+        headers={"Location": "/welcome"}
+        cookies={"username": username, "email": email}
+
+        return HTTPResponse(status_code=302, headers=headers, cookies=cookies)
 
 
 def welcome(request: HTTPRequest) -> HTTPResponse:
-    cookie_header = request.headers.get("Cookie", None)
-
-    # Cookieが送信されてきていなければ、ログインしていないとみなして/loginへリダイレクト
-    if not cookie_header:
-        return HTTPResponse(status_code=302, headers={"Location": "/login"})
-
-    # str から list へ変換
-    # ex) "name1=value1; name2=value2" => ["name1=value1", "name2=value2"]
-    # Cookieは1つと限らない。複数の場合は;区切りで渡される。
-    cookie_strings = cookie_header.split("; ")
-
-    # list から dict へ変換
-    # ex) ["name1=value1", "name2=value2"] => {"name1": "value1", "name2": "value2"}
-    cookies = {}
-    for cookie_string in cookie_strings:
-        name, value = cookie_string.split("=", maxsplit=1)
-        cookies[name] = value
-
     # Cookieにusernameが含まれていなければ、ログインしていないとみなして/loginへリダイレクト
-    if "username" not in cookies:
+    if "username" not in request.cookies:
         return HTTPResponse(status_code=302, headers={"Location": "/login"})
 
     # Welcome画面を表示
-    body = render("welcome.html", context={"username": cookies["username"]})
+    username = request.cookies["username"]
+    email = request.cookies["email"]
+    body = render("welcome.html", context={"username": username, "email": email})
 
     return HTTPResponse(body=body)
