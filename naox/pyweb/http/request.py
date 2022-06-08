@@ -4,10 +4,10 @@ from dataclasses import dataclass, field
 # データ型を定義する時には、@dataclassを使用すると良い
 @dataclass
 class HTTPRequest:
-    path: str
-    method: str
-    http_version: str
-    body: bytes
+    path: str = ""
+    method: str = ""
+    http_version: str = ""
+    body: bytes = b""
     headers: dict = field(default_factory=dict)
     params: dict = field(default_factory=dict)
 
