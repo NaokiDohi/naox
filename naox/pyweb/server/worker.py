@@ -1,22 +1,19 @@
-import os
 import re
 import traceback
+import textwrap
 from datetime import datetime
 from socket import socket
 from threading import Thread
 from typing import Tuple
 
-import settings
 from pyweb.http.request import HTTPRequest
 from pyweb.http.response import HTTPResponse
-from routers.urls import URL_VIEW
+from pyweb.urls.resolver import URLResolver
 
 class Worker(Thread):
     """
     TCP通信を行うサーバーを表すクラス
     """
-    print(f'BASE_DIR: {settings.BASE_DIR}')
-    print(f'STATIC_ROOT: {settings.STATIC_ROOT}')
 
     # 拡張子とMIME Typeの対応
     # ブラウザで日本語を表示させる為、日本語に対応したエンコーディングを指定
@@ -32,6 +29,7 @@ class Worker(Thread):
     # ステータスコードとステータスラインの対応
     STATUS_LINES = {
         200: "200 OK",
+        302: "302 Found",
         404: "404 Not Found",
         405: "405 Method Not Allowed",
     }
@@ -60,36 +58,28 @@ class Worker(Thread):
             # HTTPリクエストをパースする
             request = self.parse_http_request(request_bytes)
 
-            # pathに対応するview関数があれば、関数を取得して呼び出し、レスポンスを生成する
-            if request.path in URL_VIEW:
-                view = URL_VIEW[request.path]
-                response = view(request)
+            # URL解決を行う
+            view = URLResolver().resolve(request)
 
-            # pathがそれ以外のときは、静的ファイルからレスポンスを生成する
-            else:
-                try:
-                    # レスポンスボディを生成
-                    response_body = self.get_static_file_content(request.path)
-                    # Content-Typeを指定
-                    content_type = None
-                    response = HTTPResponse(status_code=200, body=response_body, content_type=content_type)
+            # レスポンスを生成する
+            response = view(request)
 
-                except OSError:
-                    # レスポンスを取得できなかった場合は、ログを出力して404を返す
-                    traceback.print_exc()
-                    response_body = b"<html><body><h1>404 Not Found</h1></body></html>"
-                    content_type = "text/html; charset=UTF-8"
-                    response = HTTPResponse(status_code=404, body=response_body, content_type=content_type)
-            
+            # レスポンスボディを変換
+            # bodyがstr型の場合、bytes型へ変換
+            if isinstance(response.body, str):
+                response.body = textwrap.dedent(response.body).encode()
+
             # レスポンスラインを生成
             response_line = self.build_response_line(response)
+
             # レスポンスヘッダーを生成
             response_header = self.build_response_header(request, response)
+
             # ヘッダーとボディを空行で結合した後bytesに変換し、レスポンス全体を生成
-            response = (response_line + response_header + "\r\n").encode() + response.body
+            response_bytes = (response_line + response_header + "\r\n").encode() + response.body
 
             # クライアントへレスポンスを送信する
-            self.client_socket.send(response)
+            self.client_socket.send(response_bytes)
         
         except Exception:
             # リクエストの処理中に例外が発生した場合は、
@@ -133,27 +123,19 @@ class Worker(Thread):
             key, value = re.split(r": *", header_row, maxsplit=1)
             headers[key] = value
 
-        return HTTPRequest(method=method, path=path, http_version=http_version, body=request_body, headers=headers)
+        cookies = {}
+        if "Cookie" in headers:
+            # str から list へ変換 
+            # "name1=value1; name2=value2" => ["name1=value1", "name2=value2"]
+            # Cookieは1つと限らない。複数の場合は;区切りで渡される。
+            cookie_strings = headers["Cookie"].split("; ")
+            # list から dict へ変換
+            # ["name1=value1", "name2=value2"] => {"name1": "value1", "name2": "value2"}
+            for cookie_string in cookie_strings:
+                name, value = cookie_string.split("=", maxsplit=1)
+                cookies[name] = value
 
-    def get_static_file_content(self, path: str) -> bytes:
-        """
-        リクエストpathから、staticファイルの内容を取得する
-        """
-        # settingsモジュールにSTATIC_ROOTが存在すればそれを取得し、
-        # なければデフォルトの値を使用する。
-        default_static_root = os.path.join(os.path.dirname(__file__), "../../static")
-        static_root = getattr(settings, "STATIC_ROOT", default_static_root)
-
-        # pathの先頭の/を削除し、相対パスにする
-        # 消去するのはos.path.join(base, path)の仕様上　
-        # 第2引数pathに/で始まる絶対パスを与えると第一引数baseが無視される
-        relative_path = path.lstrip("/")
-        # ファイルのpathを取得
-        static_file_path = os.path.join(static_root, relative_path)
-
-        # ファイルからレスポンスボディを生成
-        with open(static_file_path, "rb") as f:
-            return f.read()
+        return HTTPRequest(method=method, path=path, http_version=http_version, headers=headers, cookies=cookies, body=request_body)
 
     def build_response_line(self, response: HTTPResponse) -> str:
         """
@@ -173,18 +155,42 @@ class Worker(Thread):
             # pathから拡張子を取得
             if "." in request.path:
                 ext = request.path.rsplit(".", maxsplit=1)[-1]
+                # 拡張子からMIME Typeを取得
+                # 対応していない拡張子の場合、octet-streamとする
+                response.content_type = self.MIME_TYPES.get(ext, "application/octet-stream")
             else:
-                ext = ""
-            # 拡張子からMIME Typeを取得
-            # 対応していない拡張子の場合、octet-streamとする
-            response.content_type = self.MIME_TYPES.get(ext, "application/octet-stream")
+                # pathに拡張子がない場合はhtml扱いとする
+                response.content_type = "text/html; charset=UTF-8"
 
         # レスポンスヘッダーを生成
+        # 基本ヘッダーの生成
         response_header = ""
         response_header += f"Date: {datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')}\r\n"
         response_header += "Host: Naox/0.6\r\n"
         response_header += f"Content-Length: {len(response.body)}\r\n"
         response_header += "Connection: Close\r\n"
         response_header += f"Content-Type: {response.content_type}\r\n"
+
+        # Cookieヘッダーの生成
+        for cookie in response.cookies:
+            cookie_header = f"Set-Cookie: {cookie.name}={cookie.value}"
+            if cookie.expires is not None:
+                cookie_header += f"; Expires={cookie.expires.strftime('%a, %d %b %Y %H:%M:%S GMT')}"
+            if cookie.max_age is not None:
+                cookie_header += f"; Max-Age={cookie.max_age}"
+            if cookie.domain:
+                cookie_header += f"; Domain={cookie.domain}"
+            if cookie.path:
+                cookie_header += f"; Path={cookie.path}"
+            if cookie.secure:
+                cookie_header += "; Secure"
+            if cookie.http_only:
+                cookie_header += "; HttpOnly"
+
+            response_header += cookie_header + "\r\n"
+
+        # その他ヘッダーの生成
+        for header_name, header_value in response.headers.items():
+            response_header += f"{header_name}: {header_value}\r\n"
 
         return response_header
